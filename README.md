@@ -9,13 +9,14 @@
 | **Accent Chat** | Automatically converts your chat messages into various accents. Makes you sound like you have a personality, even if you don't. | 🟢 Active |
 | **MyBIS** | A simple tracker for your Best-in-Slot gear. Designed to help you be disappointed more efficiently when your loot doesn't drop. | 🟢 Active |
 | **Intrusive Thoughts** | Random text events and weird pop-ups. Don't let the voices win (or do, I'm a tooltip, not a cop). | 🟢 Active |
-| **Glamour** | Tools to manage transmogs and outfits. Because if you aren't parsing 99 in fashion, why are you even logging in? | 🟡 Maintenance |
+| **Glamour** | Tools to manage transmogs and outfits. Because if you aren't parsing 99 in fashion, why are you even logging in? | 🟢 Maintenance |
 | **Character Quirks** | Adds RPG flavor text and behavioral quirks to your character sheet. Immersion +10. | 🟢 Active |
+| **New Addon** | Not sure just yet. | 🟡 Incomplete |
 
 ## 🛠️ Installation
 
-1.  **Download** the addon you want from the [Releases](https://github.com/YOUR_USERNAME/REPO_NAME/releases) page (or clone this repo if you enjoy suffering).
-2.  **Unzip** the folder.
+1.  **Download** the addon you want from [Curseforge](https://www.curseforge.com/members/gruzzly/projects) (or clone this repo if you enjoy suffering).
+2.  **Unzip** the folder. (If from the repo)
 3.  **Drag and Drop** the folder into your WoW directory:
     `_retail_ / Interface / Addons`
 4.  **Restart WoW**. If it explodes, you did it wrong (or I did, but let's assume it was you).
@@ -26,8 +27,7 @@ Found a bug? Amazing. I probably put it there on purpose.
 
 If you want to report it or request a feature:
 * Open an **Issue** in this repo.
-* Yell at me on [Discord](YOUR_DISCORD_LINK).
-* Visit the website: [Gruzzly.co](https://gruzzly.github.io/)
+* Visit the website: [Gruzz-ly](https://gruzz-ly.github.io/)
 
 ## ☕ Support
 
@@ -36,6 +36,7 @@ I write Lua for free, which is a questionable life choice. If you want to fuel t
 * [CashApp](https://cash.app/$gruzzly)
 * [Venmo](https://account.venmo.com/u/mbbwn)
 * [PayPal](https://www.paypal.com/ncp/payment/MF9W5Q47EXAVS)
+* [Ko-fi](https://ko-fi.com/gruzzly)
 
 ## 📜 License
 
