@@ -1,0 +1,7 @@
+## Interface: 100207
+## Title: |cffFFD700Character Quirks|r
+## Notes: Adds a dash of fun to your roleplaying.
+## Author: Gruzzly
+## Version: 12.0
+
+Core.lua

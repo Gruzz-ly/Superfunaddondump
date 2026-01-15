@@ -1,0 +1,6 @@
+## Interface: 110007
+## Title: NPCGlass
+## Notes: Standalone Dialogue History
+## Author: You
+
+NPCGlass.lua

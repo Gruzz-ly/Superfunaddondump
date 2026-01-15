@@ -1,0 +1,7 @@
+## Interface: 110007
+## Title: |cff8788eeIntrusive Thoughts|r
+## Notes: The voice in your head telling you to pull the boss.
+## Author: Gruzzly
+## Version: 1.0
+
+Core.lua

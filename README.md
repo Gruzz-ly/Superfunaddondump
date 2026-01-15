@@ -11,7 +11,7 @@
 | **Intrusive Thoughts** | Random text events and weird pop-ups. Don't let the voices win (or do, I'm a tooltip, not a cop). | 🟢 Active |
 | **Glamour** | Tools to manage transmogs and outfits. Because if you aren't parsing 99 in fashion, why are you even logging in? | 🟢 Maintenance |
 | **Character Quirks** | Adds RPG flavor text and behavioral quirks to your character sheet. Immersion +10. | 🟢 Active |
-| **New Addon** | Not sure just yet. | 🟡 Incomplete |
+| **NPCGlass** | Not sure just yet. Custom Chat Addon | 🟡 Incomplete |
 
 ## 🛠️ Installation
 

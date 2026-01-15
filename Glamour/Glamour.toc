@@ -1,0 +1,8 @@
+## Interface: 110007
+## Title: Glamour
+## Notes: The ultimate transmog collection tool.
+## Author: You
+## Version: 1.0
+## SavedVariables: GlamourDB
+
+Glamour.lua

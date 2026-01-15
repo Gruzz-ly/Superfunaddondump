@@ -1,0 +1,11 @@
+## Interface: 110000
+## Title: |cffFFFFA0AccentChat|r
+## Author: Gruzzly
+## Notes: Talk with the dialect of many different races and factions!
+## Notes-2: use /achat to configure!
+## Version: 3.0
+## Dependencies: Ace3
+## SavedVariables: AccentChatDB
+
+Core.lua
+Options.lua

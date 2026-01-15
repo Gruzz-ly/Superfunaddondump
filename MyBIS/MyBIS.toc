@@ -1,0 +1,7 @@
+## Interface: 110002
+## Title: MyBIS
+## Notes: Displays a Best-in-Slot list for your spec. Use /bis [Class Spec].
+## Author: Gruzzly
+## Version: 1.0
+
+Core.lua
