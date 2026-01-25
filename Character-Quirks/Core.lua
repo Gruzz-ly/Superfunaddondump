@@ -1,10 +1,49 @@
 local addonName = "Character Quirks"
 local eventFrame = CreateFrame("Frame")
+
+-- =========================================================================
+--  VERSION DETECTION & POLYFILLS
+-- =========================================================================
+-- 1. Detect if we are on Retail (Mainline) or Classic
+local isRetail = (WOW_PROJECT_ID == WOW_PROJECT_MAINLINE)
+
+-- 2. Create a wrapper function that works on BOTH versions
+-- Retail returns a table, Classic returns individual args. We just need to know if it exists.
+local function GetAuraSafe(unit, auraName)
+    if isRetail then
+        -- RETAIL API
+        if C_UnitAuras and C_UnitAuras.GetAuraDataByName then
+            local aura = C_UnitAuras.GetAuraDataByName(unit, auraName)
+            return aura ~= nil
+        end
+    else
+        -- CLASSIC / BCC API
+        -- Iterate through the first 40 slots (standard max for Classic)
+        for i = 1, 40 do
+            local name = UnitDebuff(unit, i) -- Checking debuffs (usually what we want for CC)
+            if not name then 
+                 -- Try buffs if debuff wasn't found, just in case
+                 name = UnitBuff(unit, i)
+            end
+            
+            if name and name == auraName then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+-- =========================================================================
+--  VARIABLES & CACHE
+-- =========================================================================
+
 local quirkCooldowns = {}
 local globalThrottle = 0
 local lastEmoteTime = 0
+local quirksByEvent = {}
 
--- CACHE WOW API FOR SPEED
+-- Cache WoW API for Speed
 local UnitName = UnitName
 local UnitClass = UnitClass
 local UnitRace = UnitRace
@@ -13,9 +52,6 @@ local string_find = string.find
 local GetTime = GetTime
 local SendChatMessage = SendChatMessage
 local math_random = math.random
-
--- OPTIMIZATION: Register quirks by event, not by list
-local quirksByEvent = {}
 
 print("|cffFFD700" .. addonName .. " loaded!|r Preparing to be silly...")
 
@@ -573,9 +609,37 @@ HUNTER = {
 	}
 }
 
-local globalQuirks = {
 
-    
+local globalQuirks = {
+    -- UPDATED: Uses GetAuraSafe wrapper
+	{ Name = "Sheepish Thoughts", Event = "UNIT_AURA", Chance = 20, Cooldown = 60, Trigger = function(unit) 
+        if unit ~= "player" then return false end 
+        return GetAuraSafe("player", "Polymorph")
+    end, Emote = "feels an overwhelming urge to nibble on some grass. Baa." },
+
+    { Name = "Overkill", Event = "COMBAT_LOG_EVENT_UNFILTERED", Chance = 1, Cooldown = 180, Trigger = function() 
+        -- CombatLogGetCurrentEventInfo works on both BCC and Retail now!
+        local _, s, _, _, src, _, _, _, _, _, _, _, o = CombatLogGetCurrentEventInfo(); 
+        return s == "SWING_DAMAGE" and src == UnitName("player") and o and o > 500 
+    end, Emote = "looks at the obliterated corpse and mutters, \"I think I got 'em.\"" },
+
+    { Name = "That Tickles", Event = "COMBAT_LOG_EVENT_UNFILTERED", Chance = 5, Cooldown = 60, Trigger = function() 
+        local _, s, _, _, _, _, _, dst, _, _, _, a = CombatLogGetCurrentEventInfo(); 
+        return s == "SWING_DAMAGE" and dst == UnitGUID("player") and a and a < 100 
+    end, Emote = "barely registers the hit and looks at their attacker with confusion." },
+
+    { Name = "Wrong Target", Event = "PLAYER_TARGET_CHANGED", Chance = 10, Cooldown = 120, Trigger = function() 
+        return UnitExists("target") and UnitIsTapDenied("target") and InCombatLockdown() 
+    end, Emote = "realizes the target is already claimed by someone else and looks around for a new victim." },
+
+    -- UPDATED: Uses GetAuraSafe wrapper (checking for Sap or Gouge)
+	{ Name = "Stunned Contemplation", Event = "UNIT_AURA", Chance = 20, Cooldown = 60, Trigger = function(unit) 
+        if unit ~= "player" then return false end 
+        return GetAuraSafe("player", "Sap") or GetAuraSafe("player", "Gouge")
+    end, Emote = "has a moment for some quiet reflection while being unable to move. It's actually kind of peaceful." },
+
+    -- ... [KEEP THE REST OF YOUR GLOBAL QUIRKS HERE] ...
+     
 	{ Name = "Sheepish Thoughts", Event = "UNIT_AURA", Chance = 20, Cooldown = 60, Trigger = function(unit) if unit ~= "player" then return false end return C_UnitAuras.GetAuraDataByName("player", "Polymorph") ~= nil end, Emote = "feels an overwhelming urge to nibble on some grass. Baa." },
 	{ Name = "Overkill", Event = "COMBAT_LOG_EVENT_UNFILTERED", Chance = 1, Cooldown = 180, Trigger = function() local _, s, _, _, src, _, _, _, _, _, _, _, o = CombatLogGetCurrentEventInfo(); return s == "SWING_DAMAGE" and src == UnitName("player") and o and o > 500 end, Emote = "looks at the obliterated corpse and mutters, \"I think I got 'em.\"" },
 	{ Name = "That Tickles", Event = "COMBAT_LOG_EVENT_UNFILTERED", Chance = 5, Cooldown = 60, Trigger = function() local _, s, _, _, _, _, _, dst, _, _, _, a = CombatLogGetCurrentEventInfo(); return s == "SWING_DAMAGE" and dst == UnitGUID("player") and a and a < 100 end, Emote = "barely registers the hit and looks at their attacker with confusion." },
@@ -648,20 +712,39 @@ local globalQuirks = {
 	{ Name = "High Level Player", Event = "PLAYER_TARGET_CHANGED", Chance = 10, Cooldown = 120, Trigger = function() return UnitIsPlayer("target") and UnitLevel("target") > UnitLevel("player") + 10 end, Emote = "looks on with admiration. \"Wow, look at their gear. They've definitely seen some stuff.\"" },
 	{ Name = "Low Level Player", Event = "PLAYER_TARGET_CHANGED", Chance = 10, Cooldown = 120, Trigger = function() return UnitIsPlayer("target") and UnitLevel("target") < UnitLevel("player") - 10 end, Emote = "offers a faint, encouraging smile to the new adventurer, so full of hope and green gear." },
 	{ Name = "Duel Request", Event = "DUEL_REQUESTED", Chance = 20, Cooldown = 300, Trigger = function() return true end, Emote = "cracks their knuckles. \"A challenge! Let's do this.\"" },
+
+    { Name = "Talent Tree Tinkering", Event = "PLAYER_TALENT_UPDATE", Chance = 20, Cooldown = 60, Trigger = function() return true end, Emote = "admires their new talent choices, confident this is the optimal build... for the next five minutes." },
 }
 
+-- =========================================================================
+--  CORE LOGIC ENGINE (BOMBPROOF VERSION)
+-- =========================================================================
+
+-- 1. Setup Variables
+local startupFinished = false
+local startupTimer = 5 -- Shortened for faster testing
+local lastEmoteTime = 0 
+local lastDebugTime = 0
+
+-- 2. Debug Helper (Prints to chat so you KNOW it's working)
+local function DebugLog(msg)
+    -- Only print once per second to avoid spamming
+    if GetTime() - lastDebugTime > 1.0 then 
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00FF00[Quirks Debug]:|r " .. tostring(msg))
+        lastDebugTime = GetTime()
+    end
+end
+
+-- 3. Safety Wrapper
 local function SafeTrigger(triggerFunc, ...)
     if not triggerFunc then return false end
-    -- pcall prevents one bad quirk from crashing the whole addon
+    -- We wrap the trigger in a 'pcall' so if one quirk crashes, the addon keeps running
     local success, result = pcall(triggerFunc, ...)
-    if not success then
-        -- Optional: print("|cffFF0000Quirk Error:|r " .. (result or "Unknown error"))
-        return false
-    end
+    if not success then return false end
     return result
 end
 
--- HELPER: Safe execution of dynamic emotes (functions)
+-- 4. Text Processor
 local function GetEmoteText(emoteEntry, ...)
     if type(emoteEntry) == "function" then
         local success, result = pcall(emoteEntry, ...)
@@ -671,75 +754,76 @@ local function GetEmoteText(emoteEntry, ...)
     return emoteEntry
 end
 
--- FIX: specific events that shouldn't be registered normally
-local virtualEvents = {
-    ["JUMP"] = true,             -- Handled by hooksecurefunc below
-    ["AFK"] = "PLAYER_FLAGS_CHANGED", -- Real event for AFK
-    ["PLAYER_MOVE"] = "PLAYER_STARTED_MOVING" -- Real event for movement
-}
-
-local function RegisterQuirks(list)
-    if not list then return end
-    for _, quirk in ipairs(list) do
-        -- Create a bucket for this event if it doesn't exist
-        if not quirksByEvent[quirk.Event] then
-            quirksByEvent[quirk.Event] = {}
-            
-            -- LOGIC: Only register if it's a REAL WoW event
-            local realEvent = virtualEvents[quirk.Event]
-            
-            if realEvent then
-                -- If it maps to a real event string (like AFK -> PLAYER_FLAGS_CHANGED), register that
-                if type(realEvent) == "string" then
-                    eventFrame:RegisterEvent(realEvent)
-                end
-                -- If it is just 'true' (like JUMP), we do nothing here (handled by hook)
-            else
-                -- Standard event, register normally
-                pcall(function() eventFrame:RegisterEvent(quirk.Event) end)
-            end
-        end
-        table.insert(quirksByEvent[quirk.Event], quirk)
-    end
-end
-
+-- 5. The "Smart" Event Processor
 local function ProcessEvent(event, ...)
+    if not startupFinished then return end
+    
+    -- Global Throttle: Don't spam emotes (Limits to 1 emote every 10 seconds for testing)
     local currentTime = GetTime()
-
-    -- GLOBAL THROTTLE: Don't emote more than once every 5 seconds
-    -- Exception: CHAT_MSG events (like responding to "troll") might need faster replies
-    if (currentTime - lastEmoteTime) < 60 and not string_find(event, "CHAT_MSG") then 
+    if (currentTime - lastEmoteTime) < 10 and not string.find(event, "CHAT_MSG") then 
         return 
     end
 
     local potentialQuirks = quirksByEvent[event]
     if not potentialQuirks then return end
 
-    -- Shuffle the table slightly or just pick one? 
-    -- For now, we iterate, but since we throttle, the first valid one wins.
+    -- ARGUMENT FIXER: This makes TBC/Classic behave like Retail
+    local args = {...}
+
     for _, quirk in ipairs(potentialQuirks) do
         -- Check Cooldown
         local cdEnd = quirkCooldowns[quirk.Name] or 0
+        
         if currentTime >= cdEnd then
             -- Check Chance
-            if math_random(1, 100) <= (quirk.Chance or 100) then
-                -- Check Trigger Condition
-                if SafeTrigger(quirk.Trigger, ...) then
+            if math.random(1, 100) <= (quirk.Chance or 100) then
+                
+                local shouldTrigger = false
+
+                -- SPECIAL HANDLING FOR BROKEN EVENTS IN CLASSIC
+                if event == "UNIT_AURA" then
+                    -- TBC doesn't pass the 'auraInfo' table your quirks expect.
+                    -- We must MANUALLY find the aura and pass it to your trigger.
+                    local unit = args[1]
+                    if unit == "player" then
+                        -- Loop through debuffs to find a match
+                        for i=1, 40 do
+                            local name = UnitDebuff("player", i)
+                            if not name then name = UnitBuff("player", i) end -- check buffs if no debuff
+                            
+                            if name then
+                                -- Construct a fake "Modern" aura info table
+                                local fakeInfo = { name = name }
+                                if SafeTrigger(quirk.Trigger, unit, fakeInfo) then
+                                    shouldTrigger = true
+                                    break
+                                end
+                            end
+                        end
+                    end
+                
+                elseif event == "COMBAT_LOG_EVENT_UNFILTERED" then
+                    -- Classic payload is empty; must use CombatLogGetCurrentEventInfo
+                    -- Your existing triggers might rely on '...' so we can't easily patch arguments here.
+                    -- Instead, we just run the trigger. Ensure your CLEU triggers use CombatLogGetCurrentEventInfo()!
+                    if SafeTrigger(quirk.Trigger) then shouldTrigger = true end
                     
-                    local emoteText = GetEmoteText(quirk.Emote, ...)
+                else
+                    -- Standard Events (Run normally)
+                    if SafeTrigger(quirk.Trigger, unpack(args)) then shouldTrigger = true end
+                end
+
+                -- FIRE THE EMOTE
+                if shouldTrigger then
+                    local emoteText = GetEmoteText(quirk.Emote, unpack(args))
                     if emoteText then
-                        SendChatMessage(emoteText, "EMOTE")
-                        
-                        -- Update Cooldowns
+                        lastEmoteTime = currentTime
                         local cdDuration = quirk.Cooldown or 300
                         quirkCooldowns[quirk.Name] = currentTime + cdDuration
-                        lastEmoteTime = currentTime
                         
-                        -- Debug print (Only you see this)
-                        -- print("|cffADD8E6[Quirk Triggered]:|r " .. quirk.Name)
-                        
-                        -- Stop processing other quirks for this event to prevent double-spam
-                        return 
+                        SendChatMessage(emoteText, "EMOTE")
+                        -- DebugLog("Fired: " .. quirk.Name) -- Uncomment to see what triggered
+                        return -- Exit after one emote to prevent burst spam
                     end
                 end
             end
@@ -747,52 +831,55 @@ local function ProcessEvent(event, ...)
     end
 end
 
+-- =========================================================================
+--  INITIALIZATION & REGISTRATION
+-- =========================================================================
+
 eventFrame:SetScript("OnEvent", function(self, event, ...)
     if event == "PLAYER_LOGIN" then
-        -- [KEEP YOUR EXISTING PLAYER_LOGIN LOGIC HERE] 
-        -- (I am abbreviating it to save space, but DO NOT DELETE the login logic inside)
+        
+        print("|cffFFD700[Character Quirks]|r: Loaded for TBC Version " .. GetBuildInfo())
+
         local _, playerClass = UnitClass("player")
         local _, playerRace = UnitRace("player")
-        if not playerClass or not playerRace then return end
-        
-        print("|cffFFD700" .. addonName .. ":|r Detecting personality for " .. playerRace .. " " .. playerClass .. ".")
 
-        if classQuirks and classQuirks[playerClass] then RegisterQuirks(classQuirks[playerClass]) end
-        
-        -- Dracthyr/Race fallback logic
-        if racialQuirks and racialQuirks[playerRace] then
-            RegisterQuirks(racialQuirks[playerRace])
-        elseif playerRace == "Dracthyr" and racialQuirks["Dracthyr"] then
-            RegisterQuirks(racialQuirks["Dracthyr"])
+        local function RegisterList(list)
+            if not list then return end
+            for _, quirk in ipairs(list) do
+                if quirk.Event ~= "JUMP" then 
+                     if not quirksByEvent[quirk.Event] then
+                        quirksByEvent[quirk.Event] = {}
+                        pcall(function() eventFrame:RegisterEvent(quirk.Event) end)
+                    end
+                    table.insert(quirksByEvent[quirk.Event], quirk)
+                end
+            end
         end
 
-        RegisterQuirks(globalQuirks)
-        self:UnregisterEvent("PLAYER_LOGIN")
-
-    -- TRANSLATION LAYER: Map Real Events to our Virtual Events
-    elseif event == "PLAYER_FLAGS_CHANGED" then
-        -- Check if we are actually AFK
-        if UnitIsAFK("player") then
-            ProcessEvent("AFK")
-        end
-    elseif event == "PLAYER_STARTED_MOVING" then
-        ProcessEvent("PLAYER_MOVE")
+        if classQuirks and classQuirks[playerClass] then RegisterList(classQuirks[playerClass]) end
+        if racialQuirks and racialQuirks[playerRace] then RegisterList(racialQuirks[playerRace]) end
+        if globalQuirks then RegisterList(globalQuirks) end
+        eventFrame:RegisterEvent("PLAYER_FLAGS_CHANGED") -- For AFK
+        eventFrame:RegisterEvent("PLAYER_STARTED_MOVING") -- Modern clients support this
+        
+        -- Start Timer
+        C_Timer.After(startupTimer, function() 
+            startupFinished = true 
+            print("|cffFFD700[Character Quirks]|r: Startup complete. Quirks active.")
+        end)
+        
     else
-        -- Standard Event
         ProcessEvent(event, ...)
     end
 end)
 
--- HOOK FOR JUMPING (This fixes the JUMP error)
-hooksecurefunc("JumpOrAscendStart", function()
-    ProcessEvent("JUMP")
-end)
-
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 
--- Slash Commands for manual testing
+-- Test Command
 SLASH_QUIRKTEST1 = "/quirktest"
 SlashCmdList["QUIRKTEST"] = function()
-    print("|cffFFD700" .. addonName .. ":|r Forcing a random quirk check...")
-    ProcessEvent("PLAYER_REGEN_ENABLED") -- Fakes a "combat ended" event to test
+    print("Force triggering 'PLAYER_REGEN_ENABLED'...")
+    lastEmoteTime = 0 -- Reset throttle
+    startupFinished = true -- Bypass timer
+    ProcessEvent("PLAYER_REGEN_ENABLED")
 end

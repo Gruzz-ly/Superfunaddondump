@@ -119,31 +119,46 @@ scrollFrame:SetScrollChild(content)
 local buttonPool = {}
 
 local function RefreshList()
+    -- Hide all existing buttons first
     for _, btn in pairs(buttonPool) do btn:Hide() end
 
+    -- Sort keys so the list doesn't jump around
     local keys = {}
     for k in pairs(GlamourDB) do table.insert(keys, k) end
     table.sort(keys)
 
-    local yOffset = 0
+    local yOffset = -5 
+    local buttonHeight = 46 -- Kept the taller size
+    local buttonGap = 4 
+    
     for i, name in ipairs(keys) do
         local entry = GlamourDB[name]
         
         if not buttonPool[i] then
             local btn = CreateFrame("Button", nil, content, "GameMenuButtonTemplate")
-            btn:SetSize(320, 42)
-            btn.Text = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            btn.Text:SetPoint("TOPLEFT", 10, -5)
-            btn.SubText = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-            btn.SubText:SetPoint("BOTTOMLEFT", 10, 5)
+            btn:SetSize(320, buttonHeight)
             
+            -- PRIMARY TEXT (The Outfit Name)
+            -- CHANGED: Moved from -8 to -11 to push it down towards the center
+            btn.Text = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            btn.Text:SetPoint("TOPLEFT", 12, -11)
+            btn.Text:SetJustifyH("LEFT") 
+            
+            -- SECONDARY TEXT (The Author)
+            -- CHANGED: Moved from 8 to 11 to push it up towards the center
+            btn.SubText = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            btn.SubText:SetPoint("BOTTOMLEFT", 12, 11)
+            btn.SubText:SetJustifyH("LEFT")
+            
+            -- DELETE BUTTON
             btn.delBtn = CreateFrame("Button", nil, btn, "UIPanelCloseButton")
             btn.delBtn:SetSize(25, 25)
             btn.delBtn:SetPoint("RIGHT", -5, 0)
             
+            -- COPY/SHARE BUTTON
             btn.copyBtn = CreateFrame("Button", nil, btn)
-            btn.copyBtn:SetSize(22, 22)
-            btn.copyBtn:SetPoint("RIGHT", btn.delBtn, "LEFT", -2, 0)
+            btn.copyBtn:SetSize(20, 20)
+            btn.copyBtn:SetPoint("RIGHT", btn.delBtn, "LEFT", -4, 0)
             btn.copyBtn:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-PublicNote-Up")
             btn.copyBtn:SetHighlightTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Highlight")
             
@@ -160,7 +175,9 @@ local function RefreshList()
         local color = C_ClassColor.GetClassColor(entry.class or "PRIEST") or {r=1, g=1, b=1}
         btn.Text:SetText(name)
         btn.Text:SetTextColor(color.r, color.g, color.b)
+        
         btn.SubText:SetText("Author: " .. (entry.author or "Unknown"))
+        btn.SubText:SetTextColor(0.8, 0.8, 0.8, 1) 
 
         btn:SetScript("OnClick", function(self)
             PreviewOutfit(self.outfitCode, self.outfitName)
@@ -180,8 +197,9 @@ local function RefreshList()
             print("|cffFF69B4[Glamour]|r: Code copied to chat.")
         end)
         
-        yOffset = yOffset - 45
+        yOffset = yOffset - (buttonHeight + buttonGap)
     end
+    
     content:SetHeight(math.abs(yOffset))
 end
 

@@ -1,10 +1,10 @@
 ## Interface: 120000
-## Title: Glamour
-## Notes: The ultimate transmog collection tool.
+## Title: RP Character Sheet
+## Notes: Because actual WoW stats are boring.
 ## Author: Gruzzly
 ## Version: 1.0
-## SavedVariables: GlamourDB
+## SavedVariablesPerCharacter: RP_CharacterData
 ## IconTexture: Interface\Icons\talentspec_druid_feral_bear
 ## X-Category: Roleplay
 
-Glamour.lua
+main.lua

@@ -7,11 +7,15 @@
 | Addon | Description | Status |
 | :--- | :--- | :--- |
 | **Accent Chat** | Automatically converts your chat messages into various accents. Makes you sound like you have a personality, even if you don't. | 🟢 Active |
-| **MyBIS** | A simple tracker for your Best-in-Slot gear. Designed to help you be disappointed more efficiently when your loot doesn't drop. | 🟢 Active |
-| **Intrusive Thoughts** | Random text events and weird pop-ups. Don't let the voices win (or do, I'm a tooltip, not a cop). | 🟢 Active |
-| **Glamour** | Tools to manage transmogs and outfits. Because if you aren't parsing 99 in fashion, why are you even logging in? | 🟢 Maintenance |
 | **Character Quirks** | Adds RPG flavor text and behavioral quirks to your character sheet. Immersion +10. | 🟢 Active |
-| **NPCGlass** | Not sure just yet. Custom Chat Addon | 🟡 Incomplete |
+| **Glamour** | Tools to manage transmogs and outfits. Because if you aren't parsing 99 in fashion, why are you even logging in? | 🟢 Maintenance |
+| **HandyNotes: Decor** | Map pins for decorative item vendors. Because your virtual house shouldn't look as messy as your real apartment. | 🟢 Active |
+| **HiddenRealms** | Hides server tags (like `-Ragnaros`) in chat. Ignorance is bliss; I don't need to know where you're from to know you're going to stand in fire. | 🟢 Active |
+| **Intrusive Thoughts** | Random text events and weird pop-ups. Don't let the voices win (or do, I'm a tooltip, not a cop). | 🟢 Active |
+| **MyBIS** | A simple tracker for your Best-in-Slot gear. Designed to help you be disappointed more efficiently when your loot doesn't drop. | 🟢 Active |
+| **NPCGlass** | Not sure just yet. Custom Chat Addon. Even I don't know what this does. | 🟡 Incomplete |
+| **PUGDespair** | Tracks wipes and failed mechanics in Pick-Up Groups. A statistical analysis of why queuing with randoms was a mistake. | 🟢 Active |
+| **RPSheet** | A full D&D 5e character sheet with a built-in dice roller. Perfect for playing a Bard while your Raid Leader yells at you for missing a kick. | 🟢 Active |
 
 ## 🛠️ Installation
 

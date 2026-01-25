@@ -6,16 +6,20 @@ local AceConfigDialog = LibStub("AceConfigDialog-3.0")
 local AceConsole = LibStub("AceConsole-3.0")
 
 addon = AceAddon:NewAddon(addon, "AccentChat", "AceConsole-3.0")
-addon.version = "3.0" 
+addon.version = "3.1" 
 
 local ON_TEXT, OFF_TEXT = "|cff00FF00ON|r", "|cffFF0000OFF|r"
+
+-- =============================================================
+--  CORE LOGIC
+-- =============================================================
 
 function addon:OnInitialize()
     local dbDefaults = {
         char = {
             talkOn = true,
             strict = false,
-            language = "Dwarf",
+            language = nil,
             channels = {
                 SAY = true,
                 YELL = false,
@@ -38,24 +42,28 @@ function addon:OnInitialize()
 
     self:Print("AccentChat v" .. self.version .. " Loaded! Type |cffFFFFFF/achat|r to open the options.")
     
+    -- === THE HANDLER ===
     local function OnEnterPressedHandler(editBox)
         local originalText = editBox:GetText()
-        local chatType = editBox.chatType
-        if not chatType then
-            chatType = editBox:GetAttribute("chatType")
-        end
+        
+        -- 1. GET CHAT TYPE (The TBC Fix)
+        local chatType = editBox:GetAttribute("chatType")
+        if not chatType then chatType = "SAY" end
 
         local translatedText = originalText
 
+        -- 2. RUN TRANSLATION
         if chatType then
             local charSettings = addon.db.char
-            -- Fix: Force chatType to uppercase to ensure it matches our settings table.
-            if (charSettings.talkOn and charSettings.channels[string.upper(chatType)] and originalText and originalText ~= "" and not string.find(originalText, "%[") and not string.find(originalText, "^/")) then
+            local channelEnabled = charSettings.channels[string.upper(chatType)]
+            
+            if (charSettings.talkOn and channelEnabled and originalText and originalText ~= "" and not string.find(originalText, "^/")) then
                 translatedText = addon:Translate(originalText)
             end
         end
         
-if translatedText:match("^%*.*%*$") then
+        -- 3. APPLY CHANGES
+        if translatedText:match("^%*.*%*$") then
             local emoteText = string.sub(translatedText, 2, -2) 
             SendChatMessage(emoteText, "EMOTE")
             editBox:SetText("") 
@@ -63,17 +71,24 @@ if translatedText:match("^%*.*%*$") then
             editBox:SetText(translatedText)
         end
         
+        -- 4. SEND
         ChatEdit_SendText(editBox, 1)
-        editBox:SetText("")
+
+        -- 5. CLEANUP
         if not IsShiftKeyDown() then
             ChatEdit_DeactivateChat(editBox)
         end
     end
 
-    for i = 1, NUM_CHAT_WINDOWS do
+    -- === THE HOOK ===
+    -- We use SetScript to FORCE our handler to be the boss.
+    local numWindows = NUM_CHAT_WINDOWS or 10
+    for i = 1, numWindows do
         local frame = _G["ChatFrame" .. i]
         if frame and frame.editBox then
-            frame.editBox:SetScript("OnEnterPressed", OnEnterPressedHandler)
+            if frame.editBox:GetScript("OnEnterPressed") then
+                frame.editBox:SetScript("OnEnterPressed", OnEnterPressedHandler)
+            end
         end
     end
 end
@@ -82,44 +97,29 @@ function addon:SlashCommandHandler(input)
     AceConfigDialog:Open("AccentChat")
 end
 
-function addon:GetEnabled()
-    return self.db.char.talkOn
-end
+function addon:GetEnabled() return self.db.char.talkOn end
+function addon:SetEnabled(info, value) self.db.char.talkOn = value end
 
-function addon:SetEnabled(info, value)
-    self.db.char.talkOn = value
-    self:Print("Accent Chat is now " .. (value and ON_TEXT or OFF_TEXT))
-end
-
-function addon:GetStrict()
-    return self.db.char.strict
-end
-
-function addon:SetStrict(info, value)
-    self.db.char.strict = value
-    self:Print("Strict Mode is now " .. (value and ON_TEXT or OFF_TEXT))
-end
-
+function addon:GetStrict() return self.db.char.strict end
+function addon:SetStrict(info, value) self.db.char.strict = value end
 
 function addon:GetAccentExample(lang_key)
     local db = self.speakDB[lang_key]
     if not db or not db.ReplaceDB or #db.ReplaceDB == 0 then return "" end
 
     local examples = {}
-    
     for i = 1, math.min(2, #db.ReplaceDB) do
         local rule = db.ReplaceDB[i]
         if rule.o and rule.r and rule.o[1] ~= "%w+" then
             table.insert(examples, "|cffFFFFFF" .. rule.o[1] .. "|r -> |cff00FF00" .. rule.r[1] .. "|r")
         end
     end
-    if #examples > 0 then
-        return "e.g. " .. table.concat(examples, ", ")
-    end
+    if #examples > 0 then return "e.g. " .. table.concat(examples, ", ") end
     return ""
 end
 
 function addon:GenerateAccentOptions()
+    -- (This section is unchanged, using your existing logic)
     local accentArgs = {}
     local order = 10 
     local groups = {
@@ -135,16 +135,20 @@ function addon:GenerateAccentOptions()
         ["Creatures & Humanoids"] = {"Arakkoa", "Dryad", "Ethereal", "Hozen", "Kobold", "Murloc", "Naga", "Ogre", "Quilboar", "Sethrak", "Tuskarr", "Vrykul"},
         ["Dragons"] = {"BronzeDragon", "RedDragon", "BlueDragon", "GreenDragon", "BlackDragonPurified", "BlackDragonCorrupt"},
         ["Other Factions"] = {"Defias", "ScarletCrusade", "TwilightsHammer", "VentureCo", "Syndicate", "Mogu", "ArgentCrusade", "KirinTor", "TheScourge", "CenarionCircle", "BurningLegion", "Bloodsail", "Steamwheedle"},
-        ["Roleplaying Dialects"] = {"AdventureTime", "Pirate", "Prospector", "Purr", "Drunk", "Lisp", "Stutter", "Unstable", "Valiant", "Sinister", "Shy", "Scholarly"},    }
+        ["Roleplaying Dialects"] = {"AdventureTime", "Pirate", "Prospector", "Purr", "Drunk", "Lisp", "Stutter", "Unstable", "Valiant", "Sinister", "Shy", "Scholarly", "JawlessJohn"},
+    }
     local groupOrder = {"Dwarves", "Trolls", "Elves", "Humans & Cursed", "Orcs & Goblins", "Orc Clans", "Other Horde Races", "Other Alliance Races", "Neutral Races", "Creatures & Humanoids", "Dragons", "Other Factions", "Roleplaying Dialects"}
+
+    accentArgs["None_Reset"] = {
+        order = 1, type = "execute",
+        name = function() if self.db.char.language == nil then return "|cff00FF00None [Active]|r" else return "None" end end,
+        desc = "Disable any specific accent translation.",
+        func = function() self.db.char.language = nil; self:Print("Accent cleared."); AceConfigDialog:Open("AccentChat") end,
+    }
 
     for _, groupName in ipairs(groupOrder) do
         order = order + 1
-        accentArgs[groupName .. "_header"] = {
-            order = order,
-            type = "header",
-            name = groupName,
-        }
+        accentArgs[groupName .. "_header"] = { order = order, type = "header", name = groupName }
         local accentKeys = groups[groupName]
         if accentKeys then
             table.sort(accentKeys)
@@ -152,50 +156,22 @@ function addon:GenerateAccentOptions()
                 local lang_data = self.speakDB[lang_key]
                 if lang_data then
                     order = order + 1
-accentArgs[lang_key] = {
-                        order = order,
-                        type = "execute",
-                        name = function()
-                            if self.db.char.language == lang_key then
-                                return "|cff00FF00" .. lang_data.name .. " [Active]|r"
-                            else
-                                return lang_data.name
-                            end
-                        end,
-                        desc = function()
-                            local description = lang_data.desc or ""
-                            local example = self:GetAccentExample(lang_key)
-                            
-                            if description ~= "" and example ~= "" then
-                                return "|cffFFFFFF" .. description .. "|r\n|cff999999" .. example .. "|r"
-                            elseif description ~= "" then
-                                return "|cffFFFFFF" .. description .. "|r"
-                            else
-                                return example
-                            end
-                        end,
-                        func = function()
-                            self.db.char.language = lang_key
-                            self:Print("Accent set to |cffFFFFFF" .. lang_data.name .. "|r!")
-                            AceConfigDialog:Open("AccentChat")
-                        end,
+                    accentArgs[lang_key] = {
+                        order = order, type = "execute",
+                        name = function() if self.db.char.language == lang_key then return "|cff00FF00" .. lang_data.name .. " [Active]|r" else return lang_data.name end end,
+                        desc = function() return self:GetAccentExample(lang_key) end,
+                        func = function() self.db.char.language = lang_key; self:Print("Accent set to |cffFFFFFF" .. lang_data.name .. "|r!"); AceConfigDialog:Open("AccentChat") end,
                     }
                 end
             end
         end
     end
-
     return accentArgs
 end
 
--- Helper function to count words in a string
 local function countWords(str)
     local count = 0
-    if str then
-        for _ in string.gmatch(str, "%S+") do
-            count = count + 1
-        end
-    end
+    if str then for _ in string.gmatch(str, "%S+") do count = count + 1 end end
     return count
 end
 
@@ -204,26 +180,17 @@ function addon:Translate(text)
     local db = self.speakDB[lang]
     if not db then return text end
 
-    local originalWordCount = countWords(text) -- Store the original word count
-
+    local originalWordCount = countWords(text)
     text = self:sub_words(text, db)
 
-    -- Exclamation logic: Only replaces actual "!" marks.
     if db.Exclamation and not self.db.char.strict then
         text = string.gsub(text, "!", db.Exclamation)
     end
 
-    -- Randomly add prepend/append phrases
-    -- Only apply if the original message was longer than one word.
     if originalWordCount > 1 then
-        if (math.random(100) > 97) then
-            text = self:append_phrase(text, db)
-        end
-        if (math.random(100) > 97) then
-            text = self:prepend_phrase(text, db)
-        end
+        if (math.random(100) > 97) then text = self:append_phrase(text, db) end
+        if (math.random(100) > 97) then text = self:prepend_phrase(text, db) end
     end
-    
     return text
 end
 
@@ -242,23 +209,19 @@ function addon:sub_words(inputString, db)
 
     for i = 1, #sub_array do
         local rule = sub_array[i]
-        
         if rule.o[1] == "%w+" then
-             tempString = string.gsub(tempString, "(%w+)", function(word)
-                return rule.r[math.random(#rule.r)]
-            end)
+             tempString = string.gsub(tempString, "(%w+)", function(word) return rule.r[math.random(#rule.r)] end)
         else
             local replacement = rule.r[math.random(#rule.r)]
             for j = 1, #rule.o do
                 local word_to_find = rule.o[j]
-                
+                -- Match whole words, preserving casing
                 tempString = string.gsub(tempString, "%f[%w_]" .. word_to_find .. "%f[%W_]", replacement)
                 tempString = string.gsub(tempString, "%f[%w_]" .. word_to_find:gsub("^%l", string.upper) .. "%f[%W_]", replacement:gsub("^%l", string.upper))
                 tempString = string.gsub(tempString, "%f[%w_]" .. word_to_find:upper() .. "%f[%W_]", replacement:upper())
             end
         end
     end
- 
     return tempString:sub(1, -2)
 end
 
@@ -272,21 +235,19 @@ end
 function addon:append_phrase(inputString, db)
     if not self.db.char.strict and #db.AppendDB > 0 then
         local phrase = db.AppendDB[math.random(#db.AppendDB)]
-       
         local newString, matches = string.gsub(inputString, "([%.%!%?])", phrase .. "%1", 1)
-        if matches > 0 then
-            return newString
-        else
-            
-            return inputString .. phrase
-        end
+        if matches > 0 then return newString else return inputString .. phrase end
     end
     return inputString
 end
 
+-- =============================================================
+--  DATA
+-- =============================================================
+
 function addon:CreateSpeakDB()
     self.speakDB = {
-        ["Catlike"] = { name = "Catlike", desc = "A playful, sometimes aloof dialect that extends 'r's into purrs and peppers speech with feline mannerisms.", PrependDB = { "*stretches lazily* ", "Mrreow... " }, AppendDB = { ", prrr.", ", nya?" }, InjectDB = { ", mrrr, " }, Exclamation = " Prrr!", ReplaceDB = { {o={"hello", "hi", "hey"}, r={"Mrreow?", "Meow."}}, {o={"goodbye", "bye"}, r={"*disappears silently*", "*trots away*"}}, {o={"yes"}, r={"Prrr..."}}, {o={"no"}, r={"Hsss..."}}, {o={"now"}, r={"Meeeow"}}, {o={"you"}, r={"mew"}}, {o={"what"}, r={"Mrow?"}}, {o={"are"}, r={"arrre"}}, {o={"for"}, r={"forrr"}}, {o={"your"}, r={"yourrr"}}, {o={"very"}, r={"verrry"}}, {o={"friend"}, r={"frrriend"}}, {o={"purr"}, r={"prrrrrrr"}}, {o={"sleep", "nap"}, r={"*curls up for a nap*"}}, {o={"food", "fish"}, r={"*eyes the meal hungrily*"}}, {o={"pet", "cuddle", "scratch"}, r={"*purrs and rubs against you*"}}, {o={"go away", "leave", "shoo"}, r={"*hisses and flattens ears*"}}, {o={"here", "come"}, r={"*trots over curiously*"}}, {o={"mine"}, r={"*pats it possessively*"}}, {o={"sorry"}, r={"*looks up with wide, apologetic eyes*"}}, {o={"thanks"}, r={"*gives a slow, thankful blink*"}} } },
+["Catlike"] = { name = "Catlike", desc = "A playful, sometimes aloof dialect that extends 'r's into purrs and peppers speech with feline mannerisms.", PrependDB = { "*stretches lazily* ", "Mrreow... " }, AppendDB = { ", prrr.", ", nya?" }, InjectDB = { ", mrrr, " }, Exclamation = " Prrr!", ReplaceDB = { {o={"hello", "hi", "hey"}, r={"Mrreow?", "Meow."}}, {o={"goodbye", "bye"}, r={"*disappears silently*", "*trots away*"}}, {o={"yes"}, r={"Prrr..."}}, {o={"no"}, r={"Hsss..."}}, {o={"now"}, r={"Meeeow"}}, {o={"you"}, r={"mew"}}, {o={"what"}, r={"Mrow?"}}, {o={"are"}, r={"arrre"}}, {o={"for"}, r={"forrr"}}, {o={"your"}, r={"yourrr"}}, {o={"very"}, r={"verrry"}}, {o={"friend"}, r={"frrriend"}}, {o={"purr"}, r={"prrrrrrr"}}, {o={"sleep", "nap"}, r={"*curls up for a nap*"}}, {o={"food", "fish"}, r={"*eyes the meal hungrily*"}}, {o={"pet", "cuddle", "scratch"}, r={"*purrs and rubs against you*"}}, {o={"go away", "leave", "shoo"}, r={"*hisses and flattens ears*"}}, {o={"here", "come"}, r={"*trots over curiously*"}}, {o={"mine"}, r={"*pats it possessively*"}}, {o={"sorry"}, r={"*looks up with wide, apologetic eyes*"}}, {o={"thanks"}, r={"*gives a slow, thankful blink*"}} } },
         ["Dwarf"] = { name = "Dwarf", desc = "Speak with the stout confidence of an Ironforge mountaineer!", PrependDB = { "Aye, ", "By me beard, " }, AppendDB = { ", yeh hear?" }, InjectDB = { ", Ach, ", ", bah, " }, Exclamation = " Hah!", ReplaceDB = { {o={"hello", "hey"}, r={"Well met", "E'llo"}}, {o={"goodbye"}, r={"Fare thee well"}}, {o={"no"}, r={"nae"}}, {o={"not"}, r={"nae"}}, {o={"can't"}, r={"cannae"}}, {o={"don't"}, r={"dunnae"}}, {o={"yes"}, r={"aye"}}, {o={"the"}, r={"tha"}}, {o={"you"}, r={"ye"}}, {o={"your"}, r={"yer"}}, {o={"my"}, r={"me"}}, {o={"are"}, r={"be"}}, {o={"and"}, r={"an'"}}, {o={"to"}, r={"tae"}}, {o={"of"}, r={"o'"}}, {o={"little"}, r={"wee"}}, {o={"friend"}, r={"lad"}}, {o={"friends"}, r={"lads"}}, {o={"girl", "woman"}, r={"lass"}}, {o={"elf"}, r={"pointy-ear"}}, {o={"money", "coin"}, r={"riches", "coin"}}, {o={"ing"}, r={"in'"}}, {o={"good"}, r={"stout"}}, {o={"drink", "beer"}, r={"ale", "mead"}}, {o={"kill"}, r={"smash"}}, {o={"stone"}, r={"stone an' iron"}}, {o={"strong"}, r={"sturdy"}}, {o={"fight"}, r={"brawl"}}, {o={"family"}, r={"clan"}}, {o={"king"}, r={"Thane"}}, {o={"home"}, r={"hearth"}} } },
         ["Troll"] = { name = "Darkspear Troll", desc = "Embrace the laid-back, voodoo-tinged slang of the Darkspear tribe.", PrependDB = { "Hey mon, ", "Listen up, " }, AppendDB = { ", ya hear?", ", mon." }, InjectDB = { ", see? ", ", eh? " }, Exclamation = " Ya mon!", ReplaceDB = { {o={"hello", "hey"}, r={"Wha' gwaan"}}, {o={"goodbye"}, r={"Walk good"}}, {o={"the"}, r={"da"}}, {o={"them"}, r={"dem"}}, {o={"with"}, r={"wit"}}, {o={"you"}, r={"ya"}}, {o={"your"}, r={"ya"}}, {o={"are"}, r={"be"}}, {o={"i am"}, r={"I be"}}, {o={"of"}, r={"o'"}}, {o={"to"}, r={"ta"}}, {o={"what"}, r={"wha'"}}, {o={"that"}, r={"dat"}}, {o={"friend"}, r={"mon", "brudda"}}, {o={"is"}, r={"be"}}, {o={"it is"}, r={"it be"}}, {o={"ing"}, r={"in'"}}, {o={"this"}, r={"dis"}}, {o={"they"}, r={"dey"}}, {o={"there"}, r={"dere"}}, {o={"then"}, r={"den"}}, {o={"thing"}, r={"ting"}}, {o={"think"}, r={"tink"}}, {o={"three"}, r={"tree"}}, {o={"other"}, r={"odda"}}, {o={"father"}, r={"fadda"}}, {o={"mother"}, r={"mudda"}}, {o={"food"}, r={"grub"}}, {o={"spirit"}, r={"loa"}}, {o={"magic"}, r={"juju"}}, {o={"curse"}, r={"hex"}}, {o={"cool"}, r={"irie"}}, {o={"kill"}, r={"finish"}}, {o={"leader"}, r={"chief"}} } },
         ["Zandalari"] = { name = "Zandalari Troll", desc = "Proclaim your words with the ancient authority of the Zandalari Empire.", PrependDB = { "For Zandalar! ", "Listen closely, " }, AppendDB = { ". It is so.", ". Praise be to de Loa." }, InjectDB = { ", you see, ", ", child, " }, Exclamation = " Gold for de king!", ReplaceDB = { {o={"hello"}, r={"Jambo"}}, {o={"goodbye"}, r={"Stay away from da voodoo"}}, {o={"the"}, r={"de"}}, {o={"that"}, r={"dat"}}, {o={"them"}, r={"dem"}}, {o={"with"}, r={"wit"}}, {o={"you"}, r={"ya"}}, {o={"your"}, r={"ya"}}, {o={"friend"}, r={"honored one"}}, {o={"great"}, r={"divine"}}, {o={"is"}, r={"be"}}, {o={"are"}, r={"be"}}, {o={"what"}, r={"wha'"}}, {o={"to"}, r={"ta"}}, {o={"for"}, r={"for de"}}, {o={"ing"}, r={"in'"}}, {o={"this"}, r={"dis"}}, {o={"they"}, r={"dey"}}, {o={"there"}, r={"dere"}}, {o={"then"}, r={"den"}}, {o={"thing"}, r={"ting"}}, {o={"think"}, r={"tink"}}, {o={"three"}, r={"tree"}}, {o={"other"}, r={"odda"}}, {o={"power"}, r={"powah"}}, {o={"king"}, r={"King Rastakhan"}}, {o={"queen"}, r={"Queen Talanji"}}, {o={"city"}, r={"Dazar'alor"}}, {o={"holy"}, r={"sacred"}}, {o={"rich"}, r={"golden"}} } },
@@ -360,5 +321,5 @@ function addon:CreateSpeakDB()
         ["Purr"] = { name = "Purr", desc = "A calming dialect that extends 'r's into a soft, soothing purr.", PrependDB = { "Mmmm... " }, AppendDB = { ", prrr." }, InjectDB = { ", rrrr, " }, Exclamation = " Prrr!", ReplaceDB = { {o={"are"}, r={"arrre"}}, {o={"for"}, r={"forrr"}}, {o={"your"}, r={"yourrr"}}, {o={"very"}, r={"verrry"}}, {o={"friend"}, r={"frrriend"}}, {o={"purr"}, r={"prrrrrrr"}}, {o={"more"}, r={"morrre"}}, {o={"there"}, r={"therrre"}}, {o={"here"}, r={"herre"}}, {o={"sure"}, r={"surrre"}}, {o={"great"}, r={"grrreat"}}, {o={"pretty"}, r={"prrretty"}}, {o={"bring"}, r={"brrring"}}, {o={"from"}, r={"frrrom"}}, {o={"around"}, r={"arrround"}} } },
         ["AdventureTime"] = { name = "Mathematical!", desc = "Speak like a resident of Ooo! Replaces common words with algebraic slang from Adventure Time.", PrependDB = { "Math! ", "Shmowzow! " }, AppendDB = { ", ya scrat!", ", word?" }, InjectDB = { ", like, ", ", for realziez, " }, Exclamation = " Algebraic!", ReplaceDB = { {o={"awesome", "cool", "great", "excellent"}, r={"Mathematical", "Algebraic", "Rhombus", "So spice", "Tops", "Radical", "Bloobalooby"}}, {o={"god"}, r={"Glob", "Grob", "Grod", "Pleb"}}, {o={"oh my god"}, r={"Oh my Glob"}}, {o={"thank god"}, r={"Thank Glob"}}, {o={"what the hell", "what the fuck", "what on earth"}, r={"What the Cabbage", "What the bjork", "What the lump", "What the funge", "What the zip"}}, {o={"fuck", "fucking"}, r={"Flip", "Flippin'", "Fudge"}}, {o={"shit"}, r={"Math"}}, {o={"damn"}, r={"Cram"}}, {o={"bitch"}, r={"Toot"}}, {o={"son of a bitch"}, r={"son of a blee-blob", "son of a Toot"}}, {o={"wow", "whoa"}, r={"Shmowzow", "Slamacow", "Wowcowchow"}}, {o={"crazy", "insane"}, r={"Ba-nay-nay", "Bizonkers", "Way Cray"}}, {o={"lame", "bad", "sucks"}, r={"Bunk", "Mom-jeans", "ducks", "rips"}}, {o={"jerk", "idiot", "fool"}, r={"Wand", "Wad", "Butt guy", "Dillweed", "Ding dong", "Dingus", "Donk", "Patoot", "Toilet"}}, {o={"people", "guys"}, r={"Peeps", "Cats"}}, {o={"butt", "buttocks", "ass"}, r={"Buns", "Hams", "Stumps", "Junk", "Lumps"}}, {o={"head", "brain"}, r={"Dome piece", "The Coconuts", "Melon heart"}}, {o={"breasts"}, r={"Bazooms"}}, {o={"testicles", "crotch"}, r={"Boingloings", "Bread balls", "Yoga balls"}}, {o={"hands"}, r={"Grabbers", "Mitts"}}, {o={"legs"}, r={"Jambes", "Stems"}}, {o={"stomach"}, r={"Fat-Basket"}}, {o={"nose"}, r={"Schnoz"}}, {o={"money", "gold"}, r={"Dosh", "Scratch"}}, {o={"poop"}, r={"Boom-Boom"}}, {o={"business"}, r={"Beeswax"}}, {o={"things", "stuff"}, r={"Dealies", "Grip-a-grap", "Jazz", "Funky junk"}}, {o={"secrets", "gossip"}, r={"Juice"}}, {o={"die", "died"}, r={"croak", "croaked"}}, {o={"mess up", "screw up"}, r={"Donking up", "Skronk up"}}, {o={"messed up", "destroyed"}, r={"Jacked Up", "Jeffery'd up", "Sanched up"}}, {o={"look", "inspect"}, r={"Scope"}}, {o={"understand"}, r={"Grok"}}, {o={"punch"}, r={"Womp"}}, {o={"kick"}, r={"Salchow"}}, {o={"yes", "i agree"}, r={"Word", "Word 'em up"}}, {o={"calm"}, r={"level headed"}}, {o={"annoyed"}, r={"chafed"}}, {o={"crap", "rubbish"}, r={"Dirtballs", "Plops"}} } },        ["JawlessJohn"] = { name = "Jawless John (Chaotic)", desc = "Ghhhaaa... hrr... mmmrph...", PrependDB = {}, AppendDB = {}, InjectDB = {}, Exclamation = " GAAAAH!", ReplaceDB = {{o = {"%w+"}, r = {"Mmmrph", "Hnngh", "Ghhhaaa", "Urrgg", "Mmmm", "Aaaarrh", "*makes a gurgling sound*", "*makes a choked sound*", "*makes a wet, slushing noise*", "Hnn", "Ghhh", "Mrrr", "Uhhh", "GAAAAH", "Nnn-hnn", "Yuhhh", "Mmmr", "Grrr", "Haaa"}}} },        ["Steamwheedle"] = { name = "Steamwheedle Merchant", desc = "The neutral, friendly, and profit-minded chatter of a Steamwheedle goblin.", PrependDB = { "Greetings, friend-o! ", "Have I got a deal for you! " }, AppendDB = { ". A pleasure doing business!", ". Time is money!" }, InjectDB = { ", my friend, ", ", and for a small fee, " }, Exclamation = " Profit!", ReplaceDB = { {o={"hello"}, r={"How can I help you today?"}}, {o={"friend"}, r={"customer", "client"}}, {o={"money"}, r={"coin"}}, {o={"great"}, r={"first-rate"}}, {o={"deal"}, r={"an opportunity"}}, {o={"city"}, r={"our fine port"}}, {o={"help"}, r={"offer my services"}}, {o={"work"}, r={"the business"}} } },
         ["Murloc"] = { name = "Murloc", desc = "Mrgglglbrlglgl!", PrependDB = {}, AppendDB = {}, InjectDB = {}, Exclamation = " Mrgl!", ReplaceDB = {{o = {"%w+"}, r = {"Mrgl", "Grml", "Mrglrgl", "Aaaaaughibbrgubugbug", "Mrrrggk", "RwlRwlRwl", "Mrghll", "Grmrml", "Bleurgl", "Mggrll", "Mrgle-grgle", "Urrrgle", "Grl-grl", "Mmmrrrggglll", "Agloohogloohool", "Mrg", "Glrgl", "Mrrrgl", "Glllll", "Rwl", "Aaugh", "Ghaaaa", "Mmmurlok", "Grlg", "Grmph", "Mrglgrgl!"}}}}
-    }
+   }
 end

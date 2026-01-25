@@ -1,5 +1,5 @@
-## Interface: 120000
-## Title: |cffFFFFA0AccentChat|r
+## Interface: 20505
+## Title: |cffFFFFA0AccentChat|r (TBC)
 ## Author: Gruzzly
 ## Notes: Talk with the dialect of many different races and factions!
 ## Notes-2: use /achat to configure!

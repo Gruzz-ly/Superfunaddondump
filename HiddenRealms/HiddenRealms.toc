@@ -1,0 +1,12 @@
+## Interface: 120000
+## Title: HiddenRealms
+## Notes: Tidy those names. Hide those realms.
+## Author: Gruzzly
+## Version: 1.0
+## SavedVariables: HiddenRealmsDB
+## IconTexture: Interface\Icons\talentspec_druid_feral_bear
+## X-Category: User Interface
+
+
+
+core.lua

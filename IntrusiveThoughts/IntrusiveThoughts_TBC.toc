@@ -1,0 +1,7 @@
+## Interface: 20505
+## Title: |cff8788eeIntrusive Thoughts|r (TBC)
+## Notes: The voice in your head telling you to pull the boss.
+## Author: Gruzzly
+## Version: 2.0
+
+Core.lua

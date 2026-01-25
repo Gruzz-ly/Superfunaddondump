@@ -8,7 +8,7 @@ local specIDMap = {
     -- Death Knight
     [250] = "Blood Death Knight", [251] = "Frost Death Knight", [252] = "Unholy Death Knight",
     -- Demon Hunter
-    [577] = "Havoc Demon Hunter", [581] = "Vengeance Demon Hunter",
+    [577] = "Havoc Demon Hunter", [581] = "Vengeance Demon Hunter", [1474] = "Devourer Demon Hunter",
     -- Druid
     [102] = "Balance Druid", [103] = "Feral Druid", [104] = "Guardian Druid", [105] = "Restoration Druid",
     -- Evoker
@@ -282,6 +282,30 @@ local BiS_Lists = {
             {slot = "Weapon (Alt)", itemName = "Everforged Longsword",            itemID = 224413, sourceInfo = "Profession: Blacksmithing"},
         }
     },
+
+    ["Devourer Demon Hunter"] = {
+    source = "Midnight Pre-Patch Meta",
+    classSlug = "demon-hunter",
+    specSlug = "devourer",
+    items = {
+        {slot = "Head",      itemName = "Charhound's Vicious Scalp",      itemID = 224690, sourceInfo = "Catalyst | Raid | Vault"},
+        {slot = "Neck",      itemName = "Salhadar's Folly",               itemID = 224208, sourceInfo = "Raid: Nexus-King Salhadaar"},
+        {slot = "Shoulder",  itemName = "Charhound's Vicious Hornguards", itemID = 224693, sourceInfo = "Catalyst | Raid | Vault"},
+        {slot = "Cloak",     itemName = "Reshii Wraps",                   itemID = 224424, sourceInfo = "Patch 12.0 Questline"},
+        {slot = "Chest",     itemName = "Charhound's Vicious Bindings",   itemID = 224689, sourceInfo = "Catalyst | Raid | Vault"},
+        {slot = "Wrist",     itemName = "Rune-Branded Armbands",          itemID = 224398, sourceInfo = "Profession: Leatherworking"},
+        {slot = "Gloves",    itemName = "Charhound's Vicious Feldaws",    itemID = 224694, sourceInfo = "Catalyst | Raid | Vault"},
+        {slot = "Waist",     itemName = "Atomic Phasebelt",               itemID = 224219, sourceInfo = "Raid: Plexus Sentinel"},
+        {slot = "Legs",      itemName = "Charhound's Vicious Hidecoat",   itemID = 224691, sourceInfo = "Catalyst | Raid | Vault"},
+        {slot = "Feet",      itemName = "Interloper's Reinforced Sandals",itemID = 224386, sourceInfo = "Raid: The Soul Hunters"},
+        {slot = "Ring 1",    itemName = "Logic Gate: Alpha",              itemID = 224216, sourceInfo = "Raid: Plexus Sentinel"},
+        {slot = "Ring 2",    itemName = "Devout Zealot's Ring",           itemID = 224220, sourceInfo = "Dungeon: Dawnbreaker"},
+        {slot = "Trinket 1", itemName = "Astral Antenna",                 itemID = 224204, sourceInfo = "Raid: Loom'ithar"},
+        {slot = "Trinket 2", itemName = "Screams of a Forgotten Sky",     itemID = 224205, sourceInfo = "Raid: Dimensius"},
+        {slot = "Main Hand", itemName = "Collapsing Phaseblades",         itemID = 224197, sourceInfo = "Raid: Soulbinder Naazindhri"},
+        {slot = "Off Hand",  itemName = "Everforged Warglaive (Int)",      itemID = 224416, sourceInfo = "Profession: Blacksmithing"},
+    }
+},
 
     ["Subtlety Rogue"] = { 
         source = "Wowhead by fuu1", 
@@ -962,13 +986,16 @@ local specAliases = {
     -- Demon Hunter
     ["havoc"] = "Havoc Demon Hunter", ["hdh"] = "Havoc Demon Hunter",
     ["vengeance"] = "Vengeance Demon Hunter", ["vdh"] = "Vengeance Demon Hunter",
+    ["devo"] = "Devourer Demon Hunter", 
+    ["devourer"] = "Devourer Demon Hunter",
+    ["void dh"] = "Devourer Demon Hunter",
     -- Druid
     ["balance"] = "Balance Druid", ["boomkin"] = "Balance Druid",
     ["feral"] = "Feral Druid", ["cat"] = "Feral Druid",
     ["guardian"] = "Guardian Druid", ["bear"] = "Guardian Druid",
     ["resto druid"] = "Restoration Druid", ["rdruid"] = "Restoration Druid",
     -- Evoker
-    ["devastation"] = "Devastation Evoker", ["dev"] = "Devastation Evoker",
+    ["devastation"] = "Devastation Evoker", ["deva"] = "Devastation Evoker",
     ["preservation"] = "Preservation Evoker", ["prev"] = "Preservation Evoker",
     ["augmentation"] = "Augmentation Evoker", ["aug"] = "Augmentation Evoker",
     -- Hunter
@@ -1055,14 +1082,44 @@ for i=1, MAX_LINES do
     text:SetAllPoints(true)
     text:SetJustifyH("LEFT")
     line.text = text
-    
+
     line:SetScript("OnEnter", function(self)
-        if self.sourceInfo and self.sourceInfo ~= "" then
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:SetText(self.sourceInfo, 1, 1, 1, 1, true)
-            GameTooltip:Show()
-        end
-    end)
+    if self.sourceInfo and self.sourceInfo ~= "" then
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        
+        -- Header: Font size is controlled by using the "Large" game font template
+        GameTooltip:AddLine("Location Info", 1, 1, 1) 
+        GameTooltip:AddLine(" ") -- Spacer
+        
+        -- Body: We use a custom color and ensure it wraps if the text is long
+        GameTooltip:AddLine(self.sourceInfo, 1, 0.82, 0, true) 
+        
+        GameTooltip:Show()
+    end
+end)
+
+
+ -- Saving for Midnight Release --
+
+-- line:SetScript("OnEnter", function(self)
+--     if self.itemLink then
+--         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+--         -- Use the item link directly; this is more reliable for uncached items
+--         GameTooltip:SetHyperlink(self.itemLink) 
+        
+--         -- Double check if the tooltip actually has data
+--         if not GameTooltip:GetItem() then
+--             GameTooltip:AddLine("|cffff0000Data Loading...|r")
+--             GameTooltip:AddLine("Mouseover again in a second.")
+--         end
+
+--         if self.sourceInfo and self.sourceInfo ~= "" then
+--             GameTooltip:AddLine(" ")
+--             GameTooltip:AddDoubleLine("|cffffffffSource:|r", "|cffffd100" .. self.sourceInfo .. "|r")
+--         end
+--         GameTooltip:Show()
+--     end
+-- end)
     line:SetScript("OnLeave", function() GameTooltip:Hide() end)
     
     -- Clicking links the item to chat if you want that functionality

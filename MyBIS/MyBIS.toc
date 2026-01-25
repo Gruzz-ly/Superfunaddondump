@@ -1,7 +1,8 @@
-## Interface: 110002
+## Interface: 120000 
 ## Title: MyBIS
 ## Notes: Displays a Best-in-Slot list for your spec. Use /bis [Class Spec].
 ## Author: Gruzzly
-## Version: 1.0
-
+## Version: 1.1 -- Bumped version for Devourer support
+## IconTexture: Interface\Icons\talentspec_druid_feral_bear
+## X-Category: Raids & Dungeons
 Core.lua

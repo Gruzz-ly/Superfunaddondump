@@ -1,6 +1,6 @@
-## Interface: 120000
+## Interface: 20505
 ## Title: |cffFFD700Character Quirks|r
-## Notes: Adds a dash of fun to your roleplaying.
+## Notes: Adds a dash of fun to your roleplaying. (Classic)
 ## Author: Gruzzly
 ## Version: 3.3
 ## IconTexture: Interface\Icons\talentspec_druid_feral_bear
